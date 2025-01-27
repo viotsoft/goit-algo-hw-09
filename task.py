@@ -1,3 +1,5 @@
+import timeit
+
 coins = [50, 25, 10, 5, 2, 1]
 
 def find_coins_greedy(amount: int, coin_set=coins) -> dict:
@@ -6,23 +8,13 @@ def find_coins_greedy(amount: int, coin_set=coins) -> dict:
 
     Повертає словник формату:
         {coin_value: coin_count, ...}
-    Приклад:
-        find_coins_greedy(113) -> {50: 2, 10: 1, 2: 1, 1: 1}
     """
     result = {}
-    remaining = amount
-
     for coin in coin_set:
-        if coin <= remaining:
-            count = remaining // coin
-            remaining -= count * coin
-            result[coin] = count
-
-        if remaining == 0:
-            break
-
-    # Прибираємо монети, яких 0
-    return {k: v for k, v in result.items() if v > 0}
+        if amount >= coin:
+            result[coin] = amount // coin
+            amount %= coin
+    return result
 
 def find_min_coins(amount: int, coin_set=coins) -> dict:
     """
@@ -30,36 +22,28 @@ def find_min_coins(amount: int, coin_set=coins) -> dict:
 
     Повертає словник формату:
         {coin_value: coin_count, ...}
-    Приклад:
-        find_min_coins(113) -> {50: 2, 10: 1, 2: 1, 1: 1}
-    (Для даного набору монет збігається з результатом жадібного алгоритму,
-     але загалом може відрізнятися, якщо набір монет інший.)
     """
-    # dp[i] зберігає кортеж (мін_кількість_монет, словник_використаних_монет),
-    # де мін_кількість_монет — це кількість монет, потрібна для формування суми i,
-    # а словник_використаних_монет — це конкретний набір монет.
-    dp = [(0, {})] + [(float('inf'), {}) for _ in range(amount)]
+    min_coins = [0] + [float("inf")] * amount
+    coin_count = [{} for _ in range(amount + 1)]
 
-    for i in range(1, amount + 1):
-        for coin in coin_set:
-            if coin <= i:
-                prev_count, prev_coins_dict = dp[i - coin]
-                # Якщо використавши coin, отримаємо менше монет, ніж поточне dp[i][0], оновлюємо dp[i]
-                if prev_count + 1 < dp[i][0]:
-                    new_coins_dict = prev_coins_dict.copy()
-                    new_coins_dict[coin] = new_coins_dict.get(coin, 0) + 1
-                    dp[i] = (prev_count + 1, new_coins_dict)
+    for coin in coin_set:
+        for x in range(coin, amount + 1):
+            if min_coins[x - coin] + 1 < min_coins[x]:
+                min_coins[x] = min_coins[x - coin] + 1
+                coin_count[x] = coin_count[x - coin].copy()
+                coin_count[x][coin] = coin_count[x].get(coin, 0) + 1
 
-    return dp[amount][1]
+    return coin_count[amount]
 
-# ---- Приклад використання ----
 if __name__ == "__main__":
-    test_amounts = [99, 113]
-    
-    for amt in test_amounts:
-        greedy_result = find_coins_greedy(amt)
-        dp_result = find_min_coins(amt)
-        print(f"Сума: {amt}")
-        print(f"  Жадібний алгоритм: {greedy_result}")
-        print(f"  Динамічне програмування: {dp_result}")
-        print("-" * 40)
+    amounts = [10, 55, 113, 207, 505, 1001]
+    results = []
+
+    for amount in amounts:
+        time_greedy = timeit.timeit(lambda: find_coins_greedy(amount), number=1000)
+        time_dp = timeit.timeit(lambda: find_min_coins(amount), number=1000)
+        results.append([amount, time_greedy, time_dp])
+
+    print("Amount | Greedy Time (s) | DP Time (s)")
+    for result in results:
+        print(f"{result[0]:>6} | {result[1]:>14.8f} | {result[2]:>12.8f}")
